@@ -1,0 +1,1877 @@
+"use client";
+import { baseurl } from "@/app/config";
+import axios from "axios";
+import React, { useCallback, useRef, useState } from "react";
+import { useEffect } from "react";
+import { groupMessagesBysender } from "./group-message";
+import { useGlobalData } from "../../global/globalDataProvider.jsx";
+import "@/app/userdashboard/components/cssfiles/scrolling_bar.css";
+import { RiDeleteBin4Fill, RiSendPlaneLine } from "react-icons/ri";
+import EntryPoint from "../../components/messanger/video-audio-callcenter/EntryPoint";
+import CurrentMessage from "./CurrentMessage";
+import { formatetime } from "../../components/messanger/components/time";
+import { HiOutlineArrowLeftCircle } from "react-icons/hi2";
+import "./css/message-animation.css";
+import { useSocket } from "../../global/SocketProvider";
+import messageloader from "@/public/notification-soun/f35a1c_d8d5997a805a452ba9d3f5cbb48ce87cmv2-ezgif.com-crop.gif";
+import Image from "next/image";
+import {
+  BsReply,
+  BsReplyFill,
+  BsThreeDots,
+  BsThreeDotsVertical,
+} from "react-icons/bs";
+import { GrEmoji } from "react-icons/gr";
+import moment from "moment";
+import { RxCross2 } from "react-icons/rx";
+import { useStore } from "@/app/global/DataProvider";
+import { IoArrowRedoOutline, IoShareSocialSharp } from "react-icons/io5";
+import VoiceRecorder from "./VoiceRecorder";
+import MessagePlayer from "./MessagePlayer";
+import { showNotification } from "../../global/UseBrowserNotification";
+import BlockButton from "../../components/messanger/BlockButton";
+import { commonLogout, handleDownloadImage } from "../../components/common";
+import SmartText from "../../components/messanger/VerifyText";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import { LuSendHorizontal } from "react-icons/lu";
+import { IoMdClose } from "react-icons/io";
+import { FaRegTimesCircle } from "react-icons/fa";
+import { VscThreeBars } from "react-icons/vsc";
+import { MdEditDocument, MdFileDownload } from "react-icons/md";
+import { BiSolidCopyAlt } from "react-icons/bi";
+const Middle = ({
+  id,
+  userDetails,
+  device = "desktop",
+  setOpenWindow,
+  blockStatusByMe,
+}) => {
+  const { appData, dispatch } = useGlobalData();
+  const [message, setMessage] = useState("");
+  const [seenMessage, setSeenMessage] = useState(false);
+  const [checkMyWindow, setCheckMyWindow] = useState(false);
+  const [showReply, setShowReply] = useState(false);
+  const [replyContent, setReplyContent] = useState("");
+  const [toReplyerId, setToReplyerId] = useState(null);
+  const [sendCurrentMsg, setSendCurrentMsg] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [isLoad, setIsLoad] = useState(false);
+  const [typing, setTyping] = useState("");
+  const [typingloading, setTypingLoading] = useState();
+  const messangerRef = useRef(null);
+  const scrollRef = useRef();
+  const fullImage = useRef(null);
+  const [zoomImage, setZoomImage] = useState(false);
+  const messageRef = useRef(message); // Store `message` in a ref
+  const { store, dispatch: dps } = useStore();
+  const { socket } = useSocket();
+  const currentMessages = useRef([]);
+  ///////////////////////////////////////New logic for message modify (edit,reply,emoji_added and more at a time)/////////////////////////////////////////////////////
+  const emojies = ["👍", "❤️", "👌", "😍", "😂", "😊", "😭", "😮", "😡"];
+  const [visible, setVisible] = useState(false);
+  const [verticlePosition, setVerticlePosition] = useState(0);
+  const [isEdit,setIsEdit] = useState(false)
+  const parentRef = useRef(null);
+  // const buttonRef = useRef(null);
+  const currentMessageStore = useRef(null);
+  const emojiRef = useRef(null);
+  const bottomMenuRef = useRef(null);
+  let timer = useRef(null);
+  const isLongPressed = useRef(false);
+  // Click/tap outside to hide popup
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        emojiRef.current &&
+        bottomMenuRef.current &&
+        !emojiRef.current.contains(e.target) &&
+        !bottomMenuRef.current.contains(e.target)
+      ) {
+         setIsEdit(false);
+        setVisible(false);
+        isLongPressed.current = false;
+      }
+    };
+
+    if (visible || isEdit) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [visible,isEdit]);
+
+  const startPress = (e, msg) => {
+    currentMessageStore.current = msg;
+    const parentRect = parentRef.current.getBoundingClientRect();
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const relativeY = clientY - parentRect.top;
+    isLongPressed.current = false;
+    timer.current = setTimeout(() => {
+      new Audio("/notification-soun/longpresssound.mp3").play();
+      isLongPressed.current = true;
+      setVerticlePosition(Math.max(relativeY - 50, 0));
+      setVisible(true);
+    }, 400);
+  };
+
+  const cancelPress = () => {
+    if (!isLongPressed.current) {
+      clearTimeout(timer.current);
+    }
+  };
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  useEffect(() => {
+    socket &&
+      socket.on("sendEmojiInMessage", (data) => {
+        dispatch({ type: "concate-emoji", payload: data });
+      });
+    return () => {
+      socket && socket.off("sendEmojiInMessage");
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    const allContainer = document.querySelectorAll(".emoji_container");
+    allContainer.length > 0 && allContainer?.forEach((cont) => cont.remove());
+  }, [id]);
+  ////////////////////////////////Edit message///////////////////////////////
+  const editMessage = async (msg) => {
+    alert("This function is not ready yet!");
+    console.log(msg);
+  };
+  ////////////////////////////////Delete message///////////////////////////////
+  const deleteMsgOneByOne = async () => {
+    const id = currentMessageStore.current._id;
+    const wantItToDelete = confirm("Are you sure?");
+    if (wantItToDelete) {
+      dispatch({ type: "DELETE_MESSAGE", payload: id });
+      setVisible(false);
+      try {
+        await axios.post(
+          `${baseurl}/messanger/delete-msg-one-by-one`,
+          { id },
+          {
+            headers: {
+              Authorization: `Bearer ${store.token}`,
+            },
+          }
+        );
+      } catch (error) {}
+    } else {
+      setVisible(false);
+    }
+  };
+
+  // fetchMessage();
+  useEffect(() => {
+    async function fetchMessage() {
+      try {
+        const { data } = await axios.get(`${baseurl}/messanger/get/${id}`, {
+          headers: {
+            Authorization: `Bearer ${store.token}`,
+          },
+        });
+        dispatch({ type: "fetch-message", payload: data });
+      } catch (error) {
+        commonLogout(dps);
+      }
+    }
+    // fetchMessage();
+  }, [id]);
+  const groupMessages = groupMessagesBysender(appData.message);
+
+  const handleMessage = (event) => {
+    setMessage(event.target.value);
+    scrollToBottom();
+  };
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+
+    if (!items) return;
+
+    for (let item of items) {
+      if (item.type.indexOf("image") !== -1) {
+        const blob = item.getAsFile();
+        const url = URL.createObjectURL(blob);
+
+        setImagePreview(url);
+        setImageFile(blob);
+        e.preventDefault();
+        break;
+      }
+    }
+  };
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // Prevent line break
+      handleSendMessage();
+    }
+  };
+  useEffect(() => {
+    // messangerRef.current.addEventListener("keyUp",()=>alert("helo"))
+    if (messangerRef.current) {
+      messangerRef.current.style.height = "auto";
+      messangerRef.current.style.height = `${messangerRef.current.scrollHeight}px`;
+    }
+  }, [message]);
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+//555555
+  const handleSendMessage = useCallback(async() => {
+    if (isEdit){
+      setIsEdit(false)
+            try {
+        const { data } = await axios.get(`${baseurl}/messanger/edit/${currentMessageStore.current._id}/${message}`, {
+          headers: {
+            Authorization: `Bearer ${store.token}`,
+          },
+        });
+        dispatch({ type: "fetch-message", payload: data });
+      } catch (error) {
+        commonLogout(dps);
+      }
+      return
+    }
+
+    return
+    setImagePreview(null);
+    setImageFile(null);
+    messageRef.current = message;
+    currentMessages.current = [
+      ...currentMessages.current,
+      {
+        message: message,
+        receiverId: userDetails?._id,
+        seenStatus: seenMessage,
+        others: imageFile,
+        imagePreview,
+      },
+    ];
+
+    setTimeout(() => setMessage(""), 200); // Delay resetting to prevent issues
+    scrollToBottom();
+
+    if (showReply) {
+      setShowReply(false);
+      setReplyContent(document.getElementById("replying_content"));
+    }
+
+    // setSeenMsg(false)
+  }, [
+    message,
+    socket,
+    store.userInfo.id,
+    userDetails?._id,
+    seenMessage,
+    imageFile,
+    isEdit
+  ]);
+
+  useEffect(() => {
+    return () => {};
+  }, []);
+
+  useEffect(() => {
+    if (id == typing.senderId) {
+      socket &&
+        socket.emit("check-my-friend-window", {
+          from: store.userInfo.id,
+          to: id,
+          status: true,
+        });
+    }
+    if (id !== typing.senderId) {
+      socket &&
+        socket.emit("check-my-friend-window", {
+          from: store.userInfo.id,
+          to: typing.senderId,
+          status: false,
+        });
+    }
+  }, [socket, typing]);
+
+  useEffect(() => {
+    socket &&
+      socket.on("check-my-friend-window", (data) => {
+        console.log(data);
+        if (data.status == false)
+          if (data.status == true) {
+            setCheckMyWindow(true);
+          } else if (data.status == false) {
+            setCheckMyWindow(false);
+          }
+        // if(!checkMyWindow){
+        //   socket && socket.emit('check-my-friend-window',{from:store.userInfo.id,to:id,status:true})
+        // }
+        setSeenMessage(data.status);
+      });
+    return () => {
+      socket && socket.off("check-my-friend-window");
+    };
+  }, [socket, checkMyWindow]);
+
+  useEffect(() => {
+    if (!socket) return;
+    if (isEdit) return;
+    const handleNotActive = (data) => {
+      console.log("handleNotActive");
+      const currentMessage = messageRef.current; // Capture before state changes
+
+      if (currentMessage !== "") {
+        currentMessages.current = [
+          ...currentMessages.current,
+          {
+            message: {type:'text', content: currentMessage },
+            receiverId: userDetails?._id,
+            seenStatus: false,
+          },
+        ];
+      }
+    };
+
+    const handleValidationStatus = (data) => {
+      const currentMessage = messageRef.current; // Capture before state changes
+
+      if (currentMessage !== "") {
+        currentMessages.current = [
+          ...currentMessages.current,
+          {
+            message: { content: currentMessage, media: "", voice: "" },
+            receiverId: userDetails?._id,
+            seenStatus: data.status,
+          },
+        ];
+
+        console.log(data);
+      }
+
+      setTimeout(() => setMessage(""), 200); // Delay resetting
+      scrollToBottom();
+    };
+
+    socket.on("not-active", handleNotActive);
+    socket.on("validation-status", handleValidationStatus);
+    return () => {
+      socket.off("not-active", handleNotActive);
+      socket.off("validation-status", handleValidationStatus);
+    };
+  }, [socket, userDetails?._id]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [sendCurrentMsg]);
+
+  if (
+    currentMessages.current.length > 0 &&
+    currentMessages.current[0].receiverId !== id
+  ) {
+    currentMessages.current = [];
+  }
+
+  useEffect(() => {
+    socket?.emit("typingMsg", {
+      senderId: store.userInfo.id,
+      receiverId: id,
+      message,
+    });
+  }, [message, socket]);
+  useEffect(() => {
+    socket?.emit("typingalert", {
+      senderId: store.userInfo.id,
+      receiverId: id,
+      message,
+    });
+  }, [message, socket]);
+  ////////////////////////////////////////////////////////////////////////////////
+  useEffect(() => {
+    socket &&
+      socket.on("getTypingMsg", (data) => {
+        setIsLoad(false);
+        scrollToBottom();
+        setTyping(data);
+        setSeenMsg(false);
+      });
+    return () => {
+      socket && socket.off("getTypingMsg");
+    };
+  }, [socket, typing]);
+
+  useEffect(() => {
+    if (id == typing.senderId) {
+      if (
+        (typing?.message?.length % 10 === 0 && typing?.message?.length > 0) ||
+        typing?.message?.length === 1
+      ) {
+        new Audio("/notification-soun/oneplus_allay.mp3").play();
+        setTypingLoading(true);
+
+        setTimeout(() => {
+          setTypingLoading(false);
+        }, 8000);
+      }
+    }
+  }, [typing]);
+
+  //////////////////////////////Here is the logic for getting message and add in store from sender//////////////////////////////
+  useEffect(() => {
+    socket &&
+      socket.on("message-from", (data) => {
+        setSeenMsg(false);
+        setIsLoad(true);
+        if (id == data.senderId) {
+          dispatch({ type: "receive-message", payload: data });
+        } else {
+          showNotification(data);
+        }
+        setTimeout(() => {
+          scrollToBottom();
+        }, 200);
+      });
+    return () => {
+      socket && socket.off("message-from");
+    };
+  }, [socket, id]);
+  //////////////////////////////Here is the logic for getting alert and update message status//////////////////////////////
+  const [seenMsg, setSeenMsg] = useState(false);
+  useEffect(() => {
+    socket &&
+      socket.on("check-message-unseen-status", (data) => {
+        console.log(data);
+        if (id == data.receiverId && store.userInfo.id == data.senderId) {
+          setSeenMsg(true);
+        }
+      });
+    return () => {
+      socket && socket.off("check-message-unseen-status");
+    };
+  }, [socket, id]);
+  /////////////////////////////////Here is the logic to check current message window or not//////////////////////////////////////////
+  useEffect(() => {
+    socket &&
+      socket.on("get-seen-validation", (data) => {
+        if (data.senderId == id) {
+          socket &&
+            socket.emit("validation-status", {
+              sender: data.senderId,
+              status: true,
+            });
+        } else {
+          console.log("No");
+          socket &&
+            socket.emit("validation-status", {
+              sender: data.senderId,
+              status: false,
+            });
+        }
+      });
+    return () => {
+      socket && socket.off("get-seen-validation");
+    };
+  }, [socket, id]);
+
+  const sendEmoji = async (e, identifire) => {
+    setVisible(false);
+    const msg = currentMessageStore.current;
+    const emojiElements = {
+      messageId: msg._id,
+      senderId: store.userInfo.id,
+      receiverId: msg?.senderId,
+      senderName: store.userInfo.name,
+      senderProfile: store.userInfo.profile,
+      emoji: e.target.innerText,
+    };
+    dispatch({ type: "concate-emoji", payload: emojiElements });
+    try {
+      await axios.post(
+        `${baseurl}/messanger/update-emoji-in-message`,
+        {
+          questionId: msg._id,
+          senderId: store.userInfo.id,
+          senderName: store.userInfo.name,
+          senderProfile: store.userInfo.profile,
+          emoji: e.target.innerText,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${store.token}`,
+          },
+        }
+      );
+    } catch (error) {
+      console.log(error);
+      commonLogout(storeDispatch);
+    }
+    if (store.userInfo.id !== msg.senderId) {
+      socket && socket.emit("sendEmojiInMessage", emojiElements);
+    } else {
+      socket &&
+        socket.emit("sendEmojiInMessage", {
+          messageId: msg._id,
+          senderId: store.userInfo.id,
+          receiverId: msg?.receiverId,
+          senderName: store.userInfo.name,
+          senderProfile: store.userInfo.profile,
+          emoji: e.target.innerText,
+        });
+    }
+  };
+
+  useEffect(() => {
+    socket &&
+      socket.on("sendEmojiInMessage", (data) => {
+        dispatch({ type: "concate-emoji", payload: data });
+      });
+    return () => {
+      socket && socket.off("sendEmojiInMessage");
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    const allContainer = document.querySelectorAll(".emoji_container");
+    allContainer.length > 0 && allContainer?.forEach((cont) => cont.remove());
+  }, [id]);
+
+  const handleEmojiSenderIdentity = (e) => {
+    e.target.parentElement.children[
+      e.target.parentElement.children.length - 1
+    ].classList.remove("hidden");
+    setTimeout(() => {
+      e.target.parentElement.children[
+        e.target.parentElement.children.length - 1
+      ].classList.add("hidden");
+    }, 1000);
+  };
+
+  ///////////////////////replying logic///////////////////
+  const handleReply = () => {
+    const msg = currentMessageStore.current;
+    setToReplyerId(msg.senderId);
+    setTimeout(() => {
+      setVisible(false);
+      setShowReply(true);
+    }, 100);
+    const replyingTo = document.getElementById("replying_to");
+    const replyingText = document.getElementById("replying_content");
+    replyingText.innerText = msg.message.content;
+    if (msg.senderId == store.userInfo.id) {
+      replyingTo.innerText = "Replying to yourself";
+    } else {
+      replyingTo.innerText = `Replying to ${userDetails?.name}`;
+    }
+  };
+
+  //5555555
+  const handleEditMessage = async () => {
+    setIsEdit(true);
+    setMessage(currentMessageStore.current.message?.content);
+    setTimeout(() => {
+      setVisible(false);
+    }, 100);
+  };
+
+  ////////////////////////////////////////////////////////////////////////
+  const [hiddenTarget, setHiddenTarget] = useState(false);
+
+  useEffect(() => {
+    window.addEventListener("click", (e) => {
+      if (e.target.classList.contains("hiddenTarget")) {
+        setHiddenTarget(true);
+      } else {
+        setHiddenTarget(false);
+      }
+    });
+  }, []);
+
+  const [loadingImage, setLoadingImage] = useState(false);
+  const [imgUri, setImgUri] = useState(null);
+  const handle_media_file = async (e) => {
+    const file = e.target.files[0]; // Get the selected file
+    setImgUri(URL.createObjectURL(e.target.files[0]));
+    setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    if (file) {
+      const media = new FormData(); // Create a FormData object
+      media.append("receiverId", userDetails?._id); // Add receiverId
+      media.append("image", file); // Append the file
+      media.append(
+        "reply",
+        JSON.stringify([replyContent.innerText, toReplyerId])
+      ); // Add reply as a string if it's an array or object
+
+      try {
+        setLoadingImage(true);
+        const { data } = await axios.post(
+          `${baseurl}/messanger/image-create`,
+          media, // Pass FormData as the body
+          {
+            headers: {
+              Authorization: `Bearer ${store.token}`,
+              "Content-Type": "multipart/form-data", // Ensure Content-Type is set correctly
+            },
+          }
+        );
+        socket && socket.emit("message-to", data);
+        dispatch({ type: "send-message", payload: data });
+        setTimeout(() => {
+          scrollToBottom();
+        }, 1000);
+        setLoadingImage(false);
+      } catch (error) {
+        setLoadingImage(false);
+        console.error(
+          "Error uploading file:",
+          error.response?.data || error.message
+        );
+        commonLogout(dps);
+      }
+    } else {
+      console.log("No file selected.");
+    }
+  };
+
+  const [isStartRecord, setIsStartRecord] = useState(false);
+
+  ////////////////////Here the logic for calling message from api when scroll in a container////////////////////////////////
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const containerRef = useRef(null);
+  const [previousScroll, setPreviousScroll] = useState(0);
+  // Fetch messages from the API
+  //////////////////render message first time////////////////////////////
+
+  useEffect(() => {
+    fetchMessages(page, "static");
+  }, [id]);
+
+  useEffect(() => {}, [appData]); // ✅ Runs only when `messanger` changes
+
+  const fetchMessages = async (page, status) => {
+    if (loading) return;
+    setLoading(true);
+    if (status === "static") {
+      dispatch({ type: "empty-message" });
+    }
+    try {
+      if (status === "static") {
+        const { data } = await axios.get(
+          `${baseurl}/messanger/get/${id}/${1}`,
+          {
+            headers: {
+              Authorization: `Bearer ${store.token}`,
+            },
+          }
+        );
+
+        if (data?.length) {
+          setPage(2);
+          setHasMore(true);
+          dispatch({ type: "fetch-message", payload: data });
+          setTimeout(() => {
+            scrollToBottom();
+          }, 200);
+        } else {
+          setHasMore(false); // No more messages to fetch
+        }
+      } else {
+        const { data } = await axios.get(
+          `${baseurl}/messanger/get/${id}/${page}`,
+          {
+            headers: {
+              Authorization: `Bearer ${store.token}`,
+            },
+          }
+        );
+
+        if (data?.length) {
+          dispatch({ type: "fetch-scroll-message", payload: data });
+          setPage((prev) => prev + 1);
+          const container = containerRef.current;
+          const previousHeight = container.scrollHeight;
+          setPreviousScroll(previousHeight);
+        } else {
+          setHasMore(false); // No more messages to fetch
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      commonLogout(dps);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle scroll event to detect when user scrolls to the top //
+  const handleScroll = (e) => {
+    if (e.target.scrollTop === 0 && hasMore && !loading) {
+      fetchMessages(page, "dynamic");
+    }
+  };
+  useEffect(() => {
+    if (!loading && hasMore) {
+      const container = containerRef.current;
+      container.scrollTop = container.scrollHeight - previousScroll;
+    }
+  }, [loading]);
+
+  const lastMessage = appData.message[appData.message.length - 1];
+
+  const closeWindowAlert = async () => {
+    socket &&
+      (await socket.emit("check-my-friend-window", {
+        from: store.userInfo.id,
+        to: id,
+        status: false,
+      }));
+  };
+
+  //==========================Here is the logic to check user is blocked or not======================================
+  const [isBlockedByHim, setIsBlockedByHim] = useState(null);
+  const checkMyUserBlockStatus = async () => {
+    try {
+      const { data } = await axios.post(
+        `${baseurl}/auth/user/isblockedme/${id}`,
+        "",
+        {
+          headers: {
+            Authorization: `Bearer ${store.token}`,
+          },
+        }
+      );
+      setIsBlockedByHim(data);
+    } catch (error) {
+      console.log(error);
+      commonLogout(dps);
+    }
+  };
+
+  useEffect(() => {
+    checkMyUserBlockStatus();
+  }, [id]);
+
+  useEffect(() => {
+    socket &&
+      socket.on("user-block-and-unblock-status", (data) => {
+        if (data[1] == id) {
+          setIsBlockedByHim(data[2]);
+        }
+      });
+    return () => {
+      socket && socket.off("user-block-and-unblock-status");
+    };
+  }, [socket, id]);
+
+  //=============================================user is Blocked By me=========================================
+  const [isBlockedByMe, setIsBlockedByMe] = useState(false);
+  const [loadingBlc, setLoadingBlc] = useState(false);
+
+  const checkIsBlockedByMe = async () => {
+    try {
+      const { data } = await axios.post(
+        `${baseurl}/auth/user/isblock/${id}`,
+        "",
+        {
+          headers: {
+            Authorization: `Bearer ${store.token}`,
+          },
+        }
+      );
+
+      setIsBlockedByMe(data);
+    } catch (error) {
+      console.log(error);
+      commonLogout(dps);
+    }
+  };
+  useEffect(() => {
+    if (device == "desktop") return;
+    checkIsBlockedByMe();
+  }, [id]);
+  useEffect(() => {
+    setIsBlockedByMe(blockStatusByMe?.isBlockedByMe);
+  }, [blockStatusByMe?.isBlockedByMe]);
+  console.log(isBlockedByMe);
+
+  const unBlockUser = async () => {
+    try {
+      setLoadingBlc(true);
+      await axios.post(`${baseurl}/auth/user/unblock/${id}`, "", {
+        headers: {
+          Authorization: `Bearer ${store.token}`,
+        },
+      });
+      socket &&
+        (await socket.emit("user-block-and-unblock-status", [
+          id,
+          store.userInfo.id,
+          false,
+        ]));
+      setIsBlockedByMe(false);
+      setLoadingBlc(false);
+    } catch (error) {
+      console.log(error);
+      setLoadingBlc(false);
+      commonLogout(dps);
+    }
+  };
+
+  // Count images after messages change (new incoming message)
+  const imageLoadCount = useRef(0);
+  const [totalImages, setTotalImages] = useState(0);
+  useEffect(() => {
+    const newTotal = appData?.message?.filter(
+      (m) => m?.message?.type === "image"
+    ).length;
+    if (newTotal > 20) return;
+    setTotalImages(newTotal);
+    console.log(newTotal);
+    imageLoadCount.current = 0;
+  }, []);
+
+  const handleImageLoad = () => {
+    if (totalImages === 0) return;
+    imageLoadCount.current += 1;
+    if (imageLoadCount.current > totalImages) {
+      // All images loaded, scroll to bottom
+      scrollToBottom();
+    }
+  };
+
+  const handleImageZoom = (e) => {
+    setZoomImage(true);
+    const img = document.createElement("img");
+    img.alt = "image";
+    img.src = e;
+    img.className =
+      "max-w-full max-h-full object-contain rounded-md border-2 border-white";
+
+    setTimeout(() => {
+      if (fullImage.current) {
+        fullImage.current.innerHTML = ""; // clear any previous image
+        fullImage.current.appendChild(img);
+      }
+    }, 500);
+  };
+
+  return (
+    <div ref={parentRef} className="relative">
+      {visible && (
+        <div
+          ref={emojiRef}
+          className="left-[50%] flex justify-around gap-1 items-center -translate-x-[50%] z-50 bg-gray-100 px-3 py-2 rounded-full border"
+          style={{
+            position: "absolute",
+            top: verticlePosition,
+          }}
+        >
+          {emojies.map((em, i) => {
+            return (
+              <span
+                onClick={(e) => {
+                  sendEmoji(e, "me");
+                }}
+                key={i}
+                className="px-[2px] hover:scale-150 duration-300 text-lg cursor-pointer"
+              >
+                {em}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {visible && (
+        <div
+          ref={bottomMenuRef}
+          className="absolute text-gray-700 bottom-0 left-0 w-full bg-white border z-50 p-3 flex justify-around items-center"
+        >
+          {currentMessageStore.current &&
+            currentMessageStore.current.message?.type === "text" && (
+              <label
+                className="cursor-pointer"
+                onClick={() => handleReply()}
+                htmlFor="message_text"
+              >
+                <BsReplyFill
+                  className="cursor-pointer bg-gray-100 hover:scale-110 duration-300 px-2 py-1 rounded-full border"
+                  size={35}
+                />
+              </label>
+            )}
+
+          {currentMessageStore.current &&
+            currentMessageStore.current.message?.type === "text" && (
+              <BiSolidCopyAlt
+                onClick={() =>
+                  copyText(currentMessageStore.current.message?.content)
+                }
+                className="cursor-pointer bg-gray-100 hover:scale-110 duration-300 px-2 py-1 rounded-full border"
+                size={35}
+              />
+            )}
+          {/* /////////5555555 */}
+          {currentMessageStore.current &&
+            currentMessageStore.current.message?.type === "text" && (
+              <label
+                className="cursor-pointer"
+                onClick={() => handleEditMessage(currentMessageStore.current._id)}
+                htmlFor="message_text"
+              >
+                <MdEditDocument
+                  className="cursor-pointer bg-gray-100 hover:scale-110 duration-300 px-2 py-1 rounded-full border"
+                  size={35}
+                />
+              </label>
+            )}
+
+          {currentMessageStore.current &&
+            (currentMessageStore.current.message?.type === "image" ||
+              currentMessageStore.current.message?.type === "voice") && (
+              <MdFileDownload
+                onClick={() =>
+                  handleDownloadImage(
+                    currentMessageStore.current.message?.content,
+                    currentMessageStore.current.message?.type
+                  )
+                }
+                className="cursor-pointer bg-gray-100 hover:scale-110 duration-300 px-2 py-1 rounded-full border"
+                size={35}
+              />
+            )}
+
+          {currentMessageStore.current &&
+            (currentMessageStore.current.message?.type === "image" ||
+              currentMessageStore.current.message?.type === "voice") && (
+              <IoShareSocialSharp
+                onClick={() => alert("This function will active soon!")}
+                className="cursor-pointer bg-gray-100 hover:scale-110 duration-300 px-2 py-1 rounded-full border"
+                size={35}
+              />
+            )}
+
+          {store.userInfo.id == currentMessageStore.current.senderId && (
+            <RiDeleteBin4Fill
+              onClick={deleteMsgOneByOne}
+              className="cursor-pointer bg-gray-100 hover:scale-110 duration-300 px-2 py-1 rounded-full border"
+              size={35}
+            />
+          )}
+
+          {currentMessageStore.current &&
+            (currentMessageStore.current.message?.type === "image" ||
+              currentMessageStore.current.message?.type === "voice") && (
+              <VscThreeBars
+                onClick={() => alert("This function will active soon!")}
+                className="cursor-pointer bg-gray-100 hover:scale-110 duration-300 px-2 py-1 rounded-full border"
+                size={35}
+              />
+            )}
+        </div>
+      )}
+
+      <div
+        className={`px-4 ${
+          device == "mobile"
+            ? "rounded-t-0 bg-[#F2F2FC] border-b"
+            : "rounded-t-2xl"
+        } py-2 flex justify-between items-center`}
+      >
+        {device == "mobile" && (
+          <div
+            onClick={() => {
+              setOpenWindow(false);
+              closeWindowAlert();
+            }}
+            className=""
+          >
+            <HiOutlineArrowLeftCircle color="#8840f5" size={30} />
+          </div>
+        )}
+
+        <div className="flex gap-3 items-center">
+          <img
+            className="rounded-full w-8"
+            src={userDetails?.profile}
+            alt={userDetails?.name}
+          />
+          <div className="text-black">
+            <h2 className="text-[18px]">{userDetails?.name}</h2>
+            {/* <p className="text-[10px]">{userDetails?.status}</p> */}
+          </div>
+        </div>
+        <div className="flex justify-center gap-6 text-white">
+          {!isBlockedByHim && !isBlockedByMe && (
+            <EntryPoint
+              user={{
+                myId: store.userInfo.id,
+                fdId: userDetails?._id,
+                name: userDetails?.name,
+                profile: userDetails?.profile,
+                title: userDetails?.title,
+                type: "Audio",
+                size: 30,
+                color: "#8840f5",
+              }}
+            />
+          )}
+          {!isBlockedByHim && !isBlockedByMe && (
+            <EntryPoint
+              user={{
+                myId: store.userInfo.id,
+                fdId: userDetails?._id,
+                name: userDetails?.name,
+                profile: userDetails?.profile,
+                title: userDetails?.title,
+                type: "Video",
+                size: 30,
+                color: "#8840f5",
+              }}
+            />
+          )}
+
+          {device == "mobile" && (
+            <div className="cursor-pointer relative group">
+              <BsThreeDots color="#8840f5" size="30" />
+              <div className="hidden group-hover:inline-block w-40 shadow-md rounded-md text-center z-50 py-2 px-6 absolute top-8 border text-gray-600 bg-white -left-32 md:left-0">
+                <div className="w-4 h-4 rotate-45 bg-white -mt-4 -z-10 md:-ml-4 ml-28"></div>
+                <BlockButton
+                  blockedUserId={id}
+                  name={userDetails?.name}
+                  status={isBlockedByMe}
+                  setIsBlockedByMe={setIsBlockedByMe}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div
+        className={`overflow-y-scroll flex flex-col justify-between hidden_scroll ${
+          device === "mobile" ? "h-[92vh]" : "h-[74vh]"
+        }`}
+      >
+        {zoomImage && (
+          <div className="absolute top-0 p-2 md:p-4 left-0 w-full h-full bg-gray-700/50 backdrop-blur-md z-50 overflow-hidden">
+            <div className="flex justify-end gap-2">
+              <div
+                onClick={() => {
+                  currentMessageStore.current?.message?.content &&
+                    handleDownloadImage(
+                      currentMessageStore.current?.message?.content,
+                      "image"
+                    );
+                }}
+                className="bg-white px-3 py-1 rounded-full"
+              >
+                Download
+              </div>
+              <FaRegTimesCircle
+                className="ml-auto text-white cursor-pointer"
+                onClick={() => {
+                  setZoomImage(false);
+                }}
+              />
+            </div>
+
+            <div
+              ref={fullImage}
+              className="w-full h-[calc(100%-2.5rem)] flex justify-center items-center overflow-hidden mt-2"
+            ></div>
+          </div>
+        )}
+        <div
+          onScroll={handleScroll}
+          ref={containerRef}
+          className={`w-full overflow-y-auto relative py-6 px-2 bg-white ${
+            device === "mobile" ? "h-[82vh]" : "h-[64vh]"
+          }`}
+        >
+          <div className="flex justify-center">
+            <div>
+              <img
+                className="rounded-full w-28 mx-auto"
+                src={userDetails?.profile}
+                alt={userDetails?.name}
+              />
+              <h4 className="text-center text-gray-700 text-2xl font-semibold">
+                {userDetails?.name}
+              </h4>
+            </div>
+          </div>
+          {loading && (
+            <div className="loading flex justify-center mt-2">
+              <AiOutlineLoading3Quarters className="animate-spin" />
+            </div>
+          )}
+          {groupMessages?.map((messageBlog, i) => {
+            return (
+              <div key={i} className="mt-10">
+                {messageBlog.map((msg, i) => {
+                  return msg ? (
+                    msg?.senderId === store.userInfo.id ? (
+                      <div key={i}>
+                        {messageBlog.indexOf(msg) === 0 && (
+                          <p className="text-center text-sm text-gray-400 mt-4">
+                            {formatetime(msg?.createdAt)}
+                          </p>
+                        )}
+                        <div className="flex relative justify-end items-center gap-3 group">
+                          <div className="max-w-[60%] w-fit">
+                            {msg?.reply[1] === store.userInfo.id && (
+                              <h2 className="px-4 text-[10px] ml-auto flex gap-2 items-center">
+                                {" "}
+                                <IoArrowRedoOutline size={10} />
+                                You reply to yourself
+                              </h2>
+                            )}
+                            {msg?.reply[1] === id && (
+                              <h2 className="px-4 text-[10px] ml-auto flex gap-2 items-center">
+                                {" "}
+                                <IoArrowRedoOutline size={10} />
+                                You reply to {userDetails?.name}
+                              </h2>
+                            )}
+                            {msg?.reply?.length > 0 &&
+                              msg?.reply[0] !== null && (
+                                <h2 className="w-fit text-gray-400 py-2 px-4 ml-auto rounded-l-[30px] rounded-tr-[30px] bg-gray-100 text-[12px]">
+                                  {msg?.reply[0]}
+                                </h2>
+                              )}
+
+                            {msg?.message && msg?.message?.type === "text" && (
+                              <h2
+                                onMouseDown={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onMouseUp={cancelPress}
+                                onTouchStart={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onTouchEnd={cancelPress}
+                                className={`group relative ${
+                                  i === messageBlog.length - 1 &&
+                                  messageBlog.length > 1
+                                    ? "msg_anim "
+                                    : ""
+                                } break-words duration-500 max-w-fit ml-auto mb-[1px] ${
+                                  messageBlog.length === 1
+                                    ? "rounded-[30px]"
+                                    : "rounded-l-[30px]"
+                                } ${
+                                  messageBlog.indexOf(msg) === 0 &&
+                                  messageBlog.length > 1
+                                    ? "rounded-tr-[30px]"
+                                    : messageBlog.indexOf(msg) ===
+                                        messageBlog.length - 1 &&
+                                      messageBlog.length > 1
+                                    ? "rounded-br-[30px] duration-500"
+                                    : ""
+                                }
+
+                                ${
+                                  (msg?.reply?.length > 0 &&
+                                    msg?.reply[0] !== null) ||
+                                  msg?.emoji?.length > 0
+                                    ? "rounded-br-[30px]"
+                                    : ""
+                                }
+                                 `}
+                              >
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 -translate-x-[102%]">
+                                  {moment(msg?.createdAt).format(
+                                    "MM/DD/YY, HH:mm"
+                                  )}
+                                </div>
+                                <SmartText
+                                  handleImageZoom={handleImageZoom}
+                                  userType={"me"}
+                                  message={msg}
+                                />
+                              </h2>
+                            )}
+
+                            {msg?.message && msg?.message?.type === "image" && (
+                              <div
+                                onMouseDown={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onMouseUp={cancelPress}
+                                onTouchStart={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onTouchEnd={cancelPress}
+                                className="group relative bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 p-1 rounded-2xl my-[1px] overflow-hidden"
+                              >
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 -translate-x-[102%]">
+                                  {moment(msg?.createdAt).format(
+                                    "MM/DD/YY, HH:mm"
+                                  )}
+                                </div>
+                                <img
+                                  onClick={() =>
+                                    handleImageZoom(msg?.message?.content)
+                                  }
+                                  className="rounded-2xl cursor-pointer"
+                                  src={msg?.message?.content}
+                                  alt="message_image"
+                                  onLoad={handleImageLoad}
+                                />
+                              </div>
+                            )}
+
+                            {msg?.message && msg?.message?.type === "story" && (
+                              <div
+                                onMouseDown={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onMouseUp={cancelPress}
+                                onTouchStart={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onTouchEnd={cancelPress}
+                                className="mb-2 group bg-gray-100 rounded-md p-2 relative"
+                              >
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 -translate-x-[102%]">
+                                  {moment(msg?.createdAt).format(
+                                    "MM/DD/YY, HH:mm"
+                                  )}
+                                </div>
+                                <div className="absolute top-2 right-2 text-gray-300 z-20">
+                                  STORY
+                                </div>
+                                <div className="flex justify-center relative">
+                                  {msg?.storyAssets?.style ? (
+                                    <div className="h-32 border relative flex justify-center items-center overflow-y-auto">
+                                      <img
+                                        className="h-full"
+                                        src={`/story-bg/${msg?.storyAssets?.storyImage}.jpg`}
+                                        alt="story_image"
+                                      />
+                                      <div
+                                        style={{
+                                          color:
+                                            msg?.storyAssets?.style?.colorCode,
+                                        }}
+                                        className="absolute text-[10px] z-30"
+                                      >
+                                        {msg?.storyAssets?.storyText}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <img
+                                      className="h-32 border"
+                                      src={msg?.storyAssets?.storyImage}
+                                      alt="message_image"
+                                    />
+                                  )}
+                                </div>
+
+                                <p className="break-words">
+                                  {msg?.message?.content}
+                                </p>
+                              </div>
+                            )}
+
+                            {msg?.message && msg?.message?.type === "voice" && (
+                              <div
+                                onMouseDown={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onMouseUp={cancelPress}
+                                onTouchStart={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onTouchEnd={cancelPress}
+                                className="w-full group relative"
+                              >
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 -translate-x-[102%]">
+                                  {moment(msg?.createdAt).format(
+                                    "MM/DD/YY, HH:mm"
+                                  )}
+                                </div>
+                                <MessagePlayer
+                                  url={msg?.message?.content}
+                                  userType="me"
+                                />
+                              </div>
+                            )}
+
+                            {msg?.message == null && (
+                              <div className="p-2 group relative my-[2px] text-rose-300 border border-rose-500 rounded-full">
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 -translate-x-[102%]">
+                                  {moment(msg?.createdAt).format(
+                                    "MM/DD/YY, HH:mm"
+                                  )}
+                                </div>
+
+                                <h2>Unavailable data!</h2>
+                              </div>
+                            )}
+
+                            {msg?.emoji?.length > 0 && (
+                              <div
+                                onClick={(e) => handleEmojiSenderIdentity(e)}
+                                className={`flex ${
+                                  msg?.emoji?.length > 1 ? "px-2" : "p-[1px]"
+                                } relative cursor-pointer group items-center -translate-x-[10px] ml-5 -mt-3 bg-white rounded-full border gap-1 w-fit`}
+                              >
+                                {msg?.emoji?.map((emj, i) => {
+                                  return (
+                                    <span key={i} className="text-[10px]">
+                                      {emj.emoji}
+                                    </span>
+                                  );
+                                })}
+                                {msg?.emoji?.length > 1 && (
+                                  <span className="text-gray-500 text-sm">
+                                    {msg?.emoji?.length}
+                                  </span>
+                                )}
+
+                                <div className="absolute space-y-2 rounded-lg rounded-tr-none shadow-lg hidden -top-[140%] -left-[120px] bg-white z-50 w-[100px] p-2 border">
+                                  {msg?.emoji?.map((em, i) => {
+                                    return (
+                                      <div
+                                        key={i}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <img
+                                          className="w-5 h-5"
+                                          src={em.senderProfile}
+                                          alt="em.senderName"
+                                        />
+                                        <div className="text-sm">
+                                          {em.senderName.split(" ")[0]}
+                                        </div>
+                                        <span className="text-[10px]">
+                                          {em.emoji}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={i}>
+                        {messageBlog.indexOf(msg) === 0 && (
+                          <p className="text-center text-sm text-gray-400 mt-4">
+                            {formatetime(msg?.createdAt)}
+                          </p>
+                        )}
+                        <div className="flex justify-start items-center gap-3 group">
+                          <div className="max-w-[60%] w-fit">
+                            {msg?.reply[1] === store.userInfo.id && (
+                              <h2 className="px-4 text-[10px] flex items-center gap-2">
+                                {" "}
+                                <BsReply size={10} /> {userDetails?.name} reply
+                                to you
+                              </h2>
+                            )}
+                            {msg?.reply[1] === id && (
+                              <h2 className="px-4 text-[10px] flex items-center gap-2">
+                                {" "}
+                                <BsReply size={10} />
+                                {userDetails?.name} reply to himself/herself
+                              </h2>
+                            )}
+                            {msg?.reply?.length > 0 &&
+                              msg?.reply[0] !== null && (
+                                <h2 className="w-fit text-gray-400 py-2 px-4 rounded-r-[30px] rounded-tl-[30px] bg-gray-100 text-[12px]">
+                                  {msg?.reply[0]}
+                                </h2>
+                              )}
+
+                            {msg?.message && msg?.message?.type === "text" && (
+                              <h2
+                                onMouseDown={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onMouseUp={cancelPress}
+                                onTouchStart={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onTouchEnd={cancelPress}
+                                className={`relative group${
+                                  i === messageBlog.length - 1 &&
+                                  messageBlog.length > 1
+                                    ? "msg_anim "
+                                    : ""
+                                } break-words duration-500 max-w-fit ml-auto mb-[1px] ${
+                                  messageBlog.length === 1
+                                    ? "rounded-[30px]"
+                                    : "rounded-l-[30px]"
+                                } ${
+                                  messageBlog.indexOf(msg) === 0 &&
+                                  messageBlog.length > 1
+                                    ? "rounded-tr-[30px]"
+                                    : messageBlog.indexOf(msg) ===
+                                        messageBlog.length - 1 &&
+                                      messageBlog.length > 1
+                                    ? "rounded-br-[30px] duration-500"
+                                    : ""
+                                }
+
+                                ${
+                                  (msg?.reply?.length > 0 &&
+                                    msg?.reply[0] !== null) ||
+                                  msg?.emoji?.length > 0
+                                    ? "rounded-br-[30px]"
+                                    : ""
+                                }
+                                 `}
+                              >
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
+                                  {moment(msg?.createdAt).format(
+                                    "MM/DD/YY, HH:mm"
+                                  )}
+                                </div>
+                                <SmartText
+                                  handleImageZoom={handleImageZoom}
+                                  userType={"he"}
+                                  message={msg}
+                                />
+                              </h2>
+                            )}
+
+                            {msg?.message && msg?.message?.type === "image" && (
+                              <div
+                                className="bg-gray-50 p-1 rounded-2xl my-[1px] group relative"
+                                onMouseDown={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onMouseUp={cancelPress}
+                                onTouchStart={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onTouchEnd={cancelPress}
+                              >
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
+                                  {moment(msg?.createdAt).format(
+                                    "MM/DD/YY, HH:mm"
+                                  )}
+                                </div>
+                                <img
+                                  onClick={() =>
+                                    handleImageZoom(msg?.message?.content)
+                                  }
+                                  className="rounded-2xl cursor-pointer"
+                                  src={msg?.message?.content}
+                                  alt="message_image"
+                                  onLoad={handleImageLoad}
+                                />
+                              </div>
+                            )}
+
+                            {msg?.message && msg?.message?.type === "story" && (
+                              <div
+                                onMouseDown={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onMouseUp={cancelPress}
+                                onTouchStart={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onTouchEnd={cancelPress}
+                                className="mb-2 group bg-gray-100 rounded-md p-2 relative"
+                              >
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
+                                  {moment(msg?.createdAt).format(
+                                    "MM/DD/YY, HH:mm"
+                                  )}
+                                </div>
+                                <div className="absolute top-2 right-2 text-gray-300 z-20">
+                                  STORY
+                                </div>
+                                <div className="flex justify-center relative">
+                                  {msg?.storyAssets?.style ? (
+                                    <div className="h-32 border relative flex justify-center items-center overflow-y-auto">
+                                      <img
+                                        className="h-full"
+                                        src={`/story-bg/${msg?.storyAssets?.storyImage}.jpg`}
+                                        alt="story_image"
+                                      />
+                                      <div
+                                        style={{
+                                          color:
+                                            msg?.storyAssets?.style?.colorCode,
+                                        }}
+                                        className="absolute text-[10px] z-30"
+                                      >
+                                        {msg?.storyAssets?.storyText}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <img
+                                      className="h-32 border"
+                                      src={msg?.storyAssets?.storyImage}
+                                      alt="message_image"
+                                    />
+                                  )}
+                                </div>
+
+                                <p className="break-words">
+                                  {msg?.message?.content}
+                                </p>
+                              </div>
+                            )}
+
+                            {msg?.message && msg?.message?.type === "voice" && (
+                              <div
+                                onMouseDown={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onMouseUp={cancelPress}
+                                onTouchStart={(e) => {
+                                  startPress(e, msg);
+                                }}
+                                onTouchEnd={cancelPress}
+                                className="w-full group relative"
+                              >
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
+                                  {moment(msg?.createdAt).format(
+                                    "MM/DD/YY, HH:mm"
+                                  )}
+                                </div>
+                                <MessagePlayer
+                                  url={msg?.message?.content}
+                                  userType="he"
+                                />
+                              </div>
+                            )}
+
+                            {msg?.message == null && (
+                              <div className="p-2 group relative my-[2px] text-rose-300 border border-rose-500 rounded-full">
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
+                                  {moment(msg?.createdAt).format(
+                                    "MM/DD/YY, HH:mm"
+                                  )}
+                                </div>
+
+                                <h2>Unavailable data!</h2>
+                              </div>
+                            )}
+
+                            {msg?.emoji?.length > 0 && (
+                              <div
+                                onClick={(e) => handleEmojiSenderIdentity(e)}
+                                className={`flex ${
+                                  msg?.emoji?.length > 1 ? "px-2" : "p-[1px]"
+                                } relative cursor-pointer group items-center -translate-x-[10px] ml-auto -mt-3 bg-white rounded-full border gap-1 w-fit`}
+                              >
+                                {msg?.emoji?.map((emj, i) => {
+                                  return (
+                                    <span key={i} className="text-[10px]">
+                                      {emj.emoji}
+                                    </span>
+                                  );
+                                })}
+                                {msg?.emoji?.length > 1 && (
+                                  <span className="text-gray-500 text-sm">
+                                    {msg?.emoji?.length}
+                                  </span>
+                                )}
+                                <div className="absolute space-y-2 rounded-lg rounded-tr-none shadow-lg hidden -top-[100%] -right-[120px] bg-white z-50 w-[100px] p-2 border">
+                                  {msg?.emoji?.map((em, i) => {
+                                    return (
+                                      <div
+                                        key={i}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <img
+                                          className="w-5 h-5"
+                                          src={em.senderProfile}
+                                          alt="em.senderName"
+                                        />
+                                        <div className="text-sm">
+                                          {em.senderName.split(" ")[0]}
+                                        </div>
+                                        <span className="text-[10px]">
+                                          {em.emoji}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {messageBlog.indexOf(msg) ===
+                          messageBlog.length - 1 && (
+                          <div className="profile w-10 ">
+                            <img
+                              className="w-full bg-white p-[2px] z-40 rounded-full"
+                              src={userDetails?.profile}
+                              alt={userDetails?.name}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  ) : (
+                    ""
+                  );
+                })}
+              </div>
+            );
+          })}
+          {typing &&
+            typing.senderId === id &&
+            typing.receiverId === store.userInfo.id &&
+            typing.message !== "" && (
+              <div className="friend-message py-2 relative mb-6 flex items-end mt-4">
+                <div className="image-box absolute bottom-5">
+                  <img
+                    className="w-8 h-8 rounded-full border border-violet-700"
+                    src={userDetails?.profile}
+                    alt={userDetails?.name}
+                  />
+                  {typingloading && (
+                    <Image
+                      className="w-10 absolute right-0 -bottom-5"
+                      src={messageloader}
+                      alt="loader"
+                    />
+                  )}
+                </div>
+                <div
+                  style={{ borderRadius: "20px 20px 20px 0px" }}
+                  className="px-2 ml-6 bg-gray-100 text-gray-300 max-w-[80%] w-fit text-left"
+                >
+                  <p className="px-4 py-1 blur-[2px]">{typing.message}</p>
+                </div>
+              </div>
+            )}
+          {currentMessages.current &&
+            currentMessages.current.length > 0 &&
+            currentMessages.current[0].receiverId === id && (
+              <div>
+                {currentMessages.current.map((msg, i) => {
+                  return (
+                    <CurrentMessage
+                      key={i}
+                      allMsg={currentMessages.current}
+                      msg={msg}
+                      setSendCurrentMsg={setSendCurrentMsg}
+                      replyMsgContent={replyContent}
+                      setReplyContent={setReplyContent}
+                      replyMsgStatus={showReply}
+                      toReplyerId={toReplyerId}
+                      setToReplyerId={setToReplyerId}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+          {!seenMsg && (
+            <div>
+              {lastMessage?.senderId == store.userInfo.id &&
+                lastMessage?.seenMessage == true && (
+                  <div className="duration-500 flex justify-end">
+                    {(typing.message == "" || typing == "") && (
+                      <div className="">
+                        <img
+                          className="rounded-full duration-500 w-5"
+                          src={userDetails?.profile}
+                          alt="message_image"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
+          )}
+          {seenMsg && (
+            <div className="duration-500 flex justify-end">
+              <div className=""></div>
+              <img
+                className="rounded-full duration-500 w-5"
+                src={userDetails?.profile}
+                alt="message_image"
+              />
+            </div>
+          )}
+
+          {loadingImage && (
+            <div>
+              <div className="w-full flex justify-end">
+                <div className="w-[60%] relative">
+                  <div className="w-full h-full absolute bg-black/30 top-0 left-0 flex justify-center items-center">
+                    Loading...
+                  </div>
+                  <img
+                    className="max-w-full max-h-[350px]"
+                    src={imgUri}
+                    alt="loading"
+                  />
+                </div>
+              </div>
+              <div className="scroll_point"></div>
+            </div>
+          )}
+          <p ref={scrollRef}></p>
+        </div>
+        {/* /////////////////////////////////////////////////////////////////////////////////////////// */}
+
+        {isBlockedByHim ? (
+          <h2 className="text-center pb-4 text-red-300">
+            You are not eligible to send message to this user
+          </h2>
+        ) : (
+          <div>
+            {isBlockedByMe ? (
+              <h2 className="text-center pb-4 text-gray-700">
+                Only you can send message after{" "}
+                {loadingBlc ? (
+                  "Loading..."
+                ) : (
+                  <span
+                    onClick={unBlockUser}
+                    className="underline duration-300 hover:text-green-300 cursor-pointer"
+                  >
+                    unblocking
+                  </span>
+                )}{" "}
+                him
+              </h2>
+            ) : (
+              <div className={"bottom relative"}>
+                <div
+                  className={`${
+                    showReply ? "flex" : "hidden"
+                  } mt-4 bg-white w-full justify-between py-2 border-t px-6`}
+                >
+                  <div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <IoArrowRedoOutline size={18} />
+                        <h4 id="replying_to"></h4>
+                      </div>
+
+                      <p id="replying_content"></p>
+                    </div>
+                  </div>
+                  <div>
+                    <img
+                      onClick={(e) => {
+                        setShowReply(false);
+                        setReplyContent("");
+                      }}
+                      className="w-6 RxCross2 cursor-pointer"
+                      src="/crossed.png"
+                      alt="cross"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center">
+                  <VoiceRecorder
+                    isStartRecord={isStartRecord}
+                    setIsStartRecord={setIsStartRecord}
+                    hiddenTarget={hiddenTarget}
+                    receiverId={userDetails?._id}
+                    replyContent={replyContent}
+                    toReplyerId={toReplyerId}
+                    scrollToBottom={scrollToBottom}
+                  />
+                  {!isStartRecord && (
+                    <div
+                      className={`pr-4 ${
+                        hiddenTarget ? "pl-4" : ""
+                      } py-4 flex w-full justify-between items-end gap-2`}
+                    >
+                      {!hiddenTarget && (
+                        <label htmlFor="send_image">
+                          <div className="w-10 h-10 flex justify-center items-center rounded-full bg-gray-100">
+                            <img
+                              className="w-5 cursor-pointer"
+                              src="/image-icon.png"
+                              alt="message"
+                            />
+                          </div>
+                        </label>
+                      )}
+                      <input
+                        onChange={handle_media_file}
+                        className="hidden"
+                        id="send_image"
+                        type="file"
+                      />
+                      <div className="bg-[#ededed] w-full px-4 py-2 rounded-[20px]">
+                        {imagePreview && (
+                          <div className="mt-2 relative h-20">
+                            <div
+                              onClick={() => {
+                                setImagePreview(null);
+                                setImageFile(null);
+                              }}
+                              className="absolute top-1 right-1 cursor-pointer"
+                            >
+                              <IoMdClose />
+                            </div>
+                            <img
+                              src={imagePreview}
+                              alt="preview"
+                              className="max-h-20 rounded-2xl"
+                            />
+                          </div>
+                        )}
+                        <div className="flex w-full justify-center items-center">
+                          <textarea
+                            className="hiddenTarget bg-transparent w-full"
+                            id="message_text"
+                            ref={messangerRef}
+                            value={message}
+                            onChange={(e) => {
+                              handleMessage(e);
+                            }}
+                            onPaste={handlePaste}
+                            onKeyDown={handleKeyDown}
+                            rows={1}
+                            style={{
+                              resize: "none",
+                              overflow: "hidden",
+                              boxSizing: "border-box",
+                              outline: "none",
+                              border: "none",
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div
+                        onClick={handleSendMessage}
+                        className="flex h-full items-start cursor-pointer mb-[10px] text-gray-700"
+                      >
+                        <LuSendHorizontal size={20} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Middle;

@@ -1,0 +1,49 @@
+"use client";
+import { useState } from "react";
+import ProgressBar from "../story_sharing_components/ProgressBar";
+import StorySlider from "../story_sharing_components/StorySlider";
+import { useEffect } from "react";
+import { commonLogout } from "../components/common";
+import { useStore } from "@/app/global/DataProvider";
+import { baseurl } from "@/app/config";
+import axios from "axios";
+import FriendProfileCard from "./FriendProfileCard";
+import HorizontalCardScroll from "../components/HorizontalCardScroll";
+export default function FrindSuggestedCard() {
+  //usermemory/all-users-memory
+  const { store, dispatch } = useStore();
+  const [stories, setStories] = useState(null);
+  useEffect(() => {
+    fetchStory();
+  }, []);
+  const [suggestedFriends, setSuggestedFriends] = useState([]);
+  const fetchStory = async () => {
+    try {
+      const { data } = await axios.get(`${baseurl}/auth/suggested-friends`, {
+        headers: {
+          Authorization: `Bearer ${store.token}`,
+        },
+      });
+      setSuggestedFriends(data);
+    } catch (error) {
+      commonLogout(dispatch, error);
+    }
+  };
+  const questionsAfterDelete = (friend) => {
+    const filteredQuestions = suggestedFriends?.filter(
+      (q) => q._id !== friend._id
+    );
+    setSuggestedFriends(filteredQuestions);
+  }; //
+  return (
+      <HorizontalCardScroll>
+          <div className="flex gap-2 w-max">
+            {suggestedFriends.map((user, i) => {
+              return (
+                   <FriendProfileCard key={i} user={user} questionsAfterDelete={questionsAfterDelete}/>
+              );
+            })}
+          </div>
+      </HorizontalCardScroll>
+  );
+}
