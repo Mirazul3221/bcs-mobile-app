@@ -3,6 +3,6 @@ export let baseurl01 = 'https://template-engine-u1xl.onrender.com';
 // baseurl01 = 'http://localhost:3300';
 //==========MyPass = @43gnertnr%&Yjk%(&(
 //====================//===============///
-export let viewurl = 'https://eduplusplus.vercel.app';
+export let viewurl = 'https://bcs-mobile-app-pup6.vercel.app';
 // viewurl = 'http://localhost:3000'
 export const PUBLIC_VAPID_PUBLIC_KEY = 'BCzHITyXyFkbknCBXG25-r71u0z2deZYMF_hsvd_TY3_r9G3HhZDYx2LtePNO_4v35unW5_E3d2h1_ictb-V8NY';
