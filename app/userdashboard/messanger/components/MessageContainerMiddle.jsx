@@ -237,14 +237,22 @@ const Middle = ({
             Authorization: `Bearer ${store.token}`,
           },
         });
-        dispatch({ type: "fetch-message", payload: data });
+        dispatch({ type: "EDITED_MESSAGE", payload: {id:currentMessageStore.current?._id,msg:message}});
+                              socket &&
+            socket.emit("edited-message",{
+              from: store.userInfo.id,
+               to:id,
+               id:currentMessageStore.current?._id,
+               msg:message
+              });
+        setMessage('');
+         setHiddenTarget(false);
       } catch (error) {
         commonLogout(dps);
       }
       return
     }
 
-    return
     setImagePreview(null);
     setImageFile(null);
     messageRef.current = message;
@@ -447,13 +455,18 @@ const Middle = ({
   useEffect(() => {
     socket &&
       socket.on("check-message-unseen-status", (data) => {
-        console.log(data);
         if (id == data.receiverId && store.userInfo.id == data.senderId) {
           setSeenMsg(true);
         }
       });
+      
+    socket &&
+      socket.on("edited-message", (data) => {
+        dispatch({ type: "EDITED_MESSAGE", payload: {id:data.id,msg:data.msg}});
+      });
     return () => {
       socket && socket.off("check-message-unseen-status");
+      socket && socket.off("edited-message");
     };
   }, [socket, id]);
   /////////////////////////////////Here is the logic to check current message window or not//////////////////////////////////////////

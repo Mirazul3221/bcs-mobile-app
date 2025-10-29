@@ -115,11 +115,10 @@ const CurrentMessage = ({
           </h2>
           {isSend && (
             <div className="text-gray-400 flex gap-1 items-center">
-              {" "}
               <AiOutlineLoading3Quarters
                 className="animate-spin text-gray-400 text-center"
                 size={8}
-              />{" "}
+              />
               <p className="text-[10px]">Sending...</p>
             </div>
           )}

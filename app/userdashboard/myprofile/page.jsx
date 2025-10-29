@@ -18,7 +18,7 @@ import { CgProfile } from "react-icons/cg";
 import { IoHomeOutline } from "react-icons/io5";
 import { AiOutlineHeart } from "react-icons/ai";
 import { GrFormEdit } from "react-icons/gr";
-//
+import Footer from "@/app/components/Footer";
 import moment from "moment";
 import "../components/cssfiles/scrolling_bar.css";
 import loaderImage from "@/public/loader.gif";
@@ -996,7 +996,7 @@ const Page = () => {
         </div>
       </div> */}
       <div className="hidden md:block">
-        
+        <Footer />
       </div>
       {/* 
       <Avatar

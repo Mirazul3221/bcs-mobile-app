@@ -8,6 +8,7 @@ import { CgProfile } from "react-icons/cg";
 import { AiOutlineHeart } from "react-icons/ai";
 import { GoHistory } from "react-icons/go";
 import { Banner } from "../adsterra/Banner";
+import Footer from "../components/Footer";
 import axios from "axios";
 import { baseurl } from "../config";
 import Bcs from "./components/Slider2";
@@ -228,7 +229,7 @@ const UserDashboard = () => {
         </div>
       </div>
       <div className="hidden md:block">
-        
+        <Footer />
       </div>
 
       <VerticleBanner/>

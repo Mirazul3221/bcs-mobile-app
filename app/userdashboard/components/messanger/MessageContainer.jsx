@@ -63,8 +63,9 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
   const emojies = ["👍", "❤️", "👌", "😍", "😂", "😊", "😭", "😮", "😡"];
   const [visible, setVisible] = useState(false);
   const [verticlePosition, setVerticlePosition] = useState(0);
+    const [isEdit,setIsEdit] = useState(false);
   const parentRef = useRef(null);
-  const buttonRef = useRef(null);
+  // const buttonRef = useRef(null);
   const currentMessageStore = useRef(null);
   const emojiRef = useRef(null);
   const bottomMenuRef = useRef(null);
@@ -77,15 +78,15 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
         emojiRef.current &&
         bottomMenuRef.current &&
         !emojiRef.current.contains(e.target) &&
-        !bottomMenuRef.current.contains(e.target) &&
-        !buttonRef.current.contains(e.target)
+        !bottomMenuRef.current.contains(e.target)
       ) {
+         setIsEdit(false);
         setVisible(false);
         isLongPressed.current = false;
       }
     };
 
-    if (visible) {
+    if (visible || isEdit) {
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("touchstart", handleClickOutside);
     }
@@ -94,7 +95,7 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
     };
-  }, [visible]);
+  }, [visible,isEdit]);
 
   const startPress = (e, msg) => {
     currentMessageStore.current = msg;
@@ -208,9 +209,12 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
     }
   };
   ////////////////////////////////Edit message///////////////////////////////
-  const editMessage = async (msg) => {
-    alert("This function is not ready yet!");
-    console.log(msg);
+  const handleEditMessage = async () => {
+    setIsEdit(true);
+    setMessage(currentMessageStore.current.message?.content);
+    setTimeout(() => {
+      setVisible(false);
+    }, 100);
   };
   ////////////////////////////////Delete message///////////////////////////////
   const deleteMsgOneByOne = async () => {
@@ -234,7 +238,6 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
       setVisible(false);
     }
   };
-
 
   const check_my_friend_window = async () => {
     socket &&
@@ -310,7 +313,32 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
     }
   };
 
-  const handleSendMessage = useCallback(() => {
+  const handleSendMessage = useCallback(async() => {
+        if (isEdit){
+          setIsEdit(false)
+                try {
+            const { data } = await axios.get(`${baseurl}/messanger/edit/${currentMessageStore.current._id}/${message}`, {
+              headers: {
+                Authorization: `Bearer ${store.token}`,
+              },
+            });
+            dispatch({ type: "EDITED_MESSAGE", payload: {id:currentMessageStore.current?._id,msg:message}});
+            
+            socket &&
+            socket.emit("edited-message",{
+              from: store.userInfo.id,
+               to:id,
+               id:currentMessageStore.current?._id,
+               msg:message
+              });
+            setMessage('');
+             setHiddenTarget(false);
+          } catch (error) {
+            commonLogout(dps);
+          }
+          return
+        }
+    
     setImagePreview(null);
     setImageFile(null);
     messageRef.current = message;
@@ -426,10 +454,17 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
           setSeenMsg(true);
         }
       });
+
+    socket &&
+      socket.on("edited-message", (data) => {
+        dispatch({ type: "EDITED_MESSAGE", payload: {id:data.id,msg:data.msg}});
+      });
+
     return () => {
       socket && socket.off("check-message-unseen-status");
+      socket && socket.off("edited-message");
     };
-  }, [socket]);
+  }, [socket,id]);
   // useEffect(()=>{
 
   //   window.addEventListener('click',(e)=>[
@@ -762,10 +797,18 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
 
           {currentMessageStore.current &&
             currentMessageStore.current.message?.type === "text" && (
-              <MdEditDocument
-                className="cursor-pointer bg-gray-100 hover:scale-110 duration-300 px-2 py-1 rounded-full border"
-                size={35}
-              />
+              <label
+                className="cursor-pointer"
+                onClick={() =>
+                  handleEditMessage(currentMessageStore.current._id)
+                }
+                htmlFor="message_text"
+              >
+                <MdEditDocument
+                  className="cursor-pointer bg-gray-100 hover:scale-110 duration-300 px-2 py-1 rounded-full border"
+                  size={35}
+                />
+              </label>
             )}
 
           {currentMessageStore.current &&
@@ -889,9 +932,16 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
         {zoomImage && (
           <div className="absolute top-0 p-2 md:p-4 left-0 w-full h-full bg-gray-700/50 backdrop-blur-md z-50 overflow-hidden">
             <div className="flex justify-end gap-2">
-              <div onClick={()=>{
-              currentMessageStore.current?.message?.content && handleDownloadImage(currentMessageStore.current?.message?.content,'image')
-              }} className="bg-white px-3 py-1 rounded-full">
+              <div
+                onClick={() => {
+                  currentMessageStore.current?.message?.content &&
+                    handleDownloadImage(
+                      currentMessageStore.current?.message?.content,
+                      "image"
+                    );
+                }}
+                className="bg-white px-3 py-1 rounded-full"
+              >
                 Download
               </div>
               <FaRegTimesCircle
@@ -1061,7 +1111,7 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
                                 onTouchEnd={cancelPress}
                                 className="mb-2 group bg-gray-100 rounded-md p-2 relative"
                               >
-                                                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 -translate-x-[102%]">
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 -translate-x-[102%]">
                                   {moment(msg?.createdAt).format(
                                     "MM/DD/YY, HH:mm"
                                   )}
@@ -1114,7 +1164,7 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
                                 onTouchEnd={cancelPress}
                                 className="w-full group relative"
                               >
-                                                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 -translate-x-[102%]">
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 -translate-x-[102%]">
                                   {moment(msg?.createdAt).format(
                                     "MM/DD/YY, HH:mm"
                                   )}
@@ -1133,7 +1183,7 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
                                     "MM/DD/YY, HH:mm"
                                   )}
                                 </div>
-                             
+
                                 <h2>Unavailable data!</h2>
                               </div>
                             )}
@@ -1216,10 +1266,8 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
                                 </h2>
                               )}
 
-
                             {msg?.message && msg?.message?.type === "text" && (
                               <h2
-                                ref={buttonRef}
                                 onMouseDown={(e) => {
                                   startPress(e, msg);
                                 }}
@@ -1257,7 +1305,7 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
                                 }
                                  `}
                               >
-                                                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
                                   {moment(msg?.createdAt).format(
                                     "MM/DD/YY, HH:mm"
                                   )}
@@ -1311,7 +1359,7 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
                                 onTouchEnd={cancelPress}
                                 className="mb-2 group bg-gray-100 rounded-md p-2 relative"
                               >
-                                                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
                                   {moment(msg?.createdAt).format(
                                     "MM/DD/YY, HH:mm"
                                   )}
@@ -1364,7 +1412,7 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
                                 onTouchEnd={cancelPress}
                                 className="w-full group relative"
                               >
-                                                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
+                                <div className="hidden min-w-[84px] text-[10px] border-2 border-dotted border-black rounded-full group-hover:inline-block bg-black/70 px-2 text-white duration-150 absolute top-0 translate-x-[102%]">
                                   {moment(msg?.createdAt).format(
                                     "MM/DD/YY, HH:mm"
                                   )}
@@ -1383,7 +1431,7 @@ const FloatingMessageContainer = ({ id, userDetails, setSwitcher }) => {
                                     "MM/DD/YY, HH:mm"
                                   )}
                                 </div>
-                             
+
                                 <h2>Unavailable data!</h2>
                               </div>
                             )}

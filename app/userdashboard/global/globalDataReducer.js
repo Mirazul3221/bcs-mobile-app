@@ -16,8 +16,13 @@ export const globalDataReducer = (state, action) => {
   }
 
   if (action.type === "send-message") {
-    state.message = [...state.message, action.payload];
-    return state;
+      return {
+      globalUserProfile:state.globalUserProfile,
+      message: [...state.message, action.payload],
+      user: state.user,
+      userMemories: state.userMemories,
+      rightSideBarData:state.rightSideBarData
+    };
   }
   if (action.type === "receive-message") {
     return {
@@ -28,6 +33,23 @@ export const globalDataReducer = (state, action) => {
       rightSideBarData:state.rightSideBarData
     };
   }
+
+
+  if (action.type === "EDITED_MESSAGE") {
+const {id,msg} = action.payload
+const index = state?.message?.findIndex((m) => m._id == id);
+state.message[index].message = {type:'text',content:msg};
+console.log(state.message[index]);
+    return {
+      globalUserProfile:state.globalUserProfile,
+      message: [...state.message],
+      user: state.user,
+      userMemories: state.userMemories,
+      rightSideBarData:state.rightSideBarData
+    };
+  }
+
+
 
   if (action.type === "concate-emoji") {
     // // const tergatMessage = state?.filter(m=>m._id == action.payload)

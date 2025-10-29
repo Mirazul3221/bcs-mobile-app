@@ -8,7 +8,7 @@ import { IoPersonAdd } from "react-icons/io5";
 import moment from "moment";
 import { LuUser2 } from "react-icons/lu";
 import RadarChart from "@/app/userdashboard/components/RaderChart";
-//
+import Footer from "@/app/components/Footer";
 import Image from "next/image";
 import ProtectRoute from "@/app/global/ProtectRoute";
 import storeContext from "@/app/global/createContex";
@@ -475,7 +475,7 @@ const Page = () => {
           </div>
         </div>
         <div className="hidden  md:block">
-          
+          <Footer />
         </div>
       </div>
     </ProtectRoute>

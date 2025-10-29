@@ -2,7 +2,7 @@
 import ProtectRoute from "@/app/global/ProtectRoute";
 import React, { useRef, useState } from "react";
 import SuperHeader from "../../components/SuperHeader";
-//
+import Footer from "@/app/components/Footer";
 import { useParams } from "next/navigation";
 import axios from "axios";
 import { baseurl } from "@/app/config";
@@ -183,7 +183,7 @@ const Page = () => {
             </div>
           </div>
         </div>
-        
+        <Footer />
       </ProtectRoute>
     </div>
   );

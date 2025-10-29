@@ -2,7 +2,7 @@
 import ProtectRoute from "@/app/global/ProtectRoute";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import SuperHeader from "../../components/SuperHeader";
-//
+import Footer from "@/app/components/Footer";
 import QuestionCard from "../components/QuestionCard";
 import storeContext from "@/app/global/createContex";
 import axios from "axios";
@@ -88,7 +88,7 @@ const Page = () => {
           </div>
         </div>
         <div className="footer">
-          
+          <Footer />
         </div>
       </ProtectRoute>
     </div>

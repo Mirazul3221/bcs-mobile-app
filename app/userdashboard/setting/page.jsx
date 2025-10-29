@@ -6,7 +6,7 @@ import loder from "@/public/loading-buffer.gif";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import Image from "next/image";
 import { useStore } from "@/app/global/DataProvider";
-//
+import Footer from "@/app/components/Footer";
 import { IoMdSettings } from "react-icons/io";
 import { FiFileText } from "react-icons/fi";
 import { LuLogOut } from "react-icons/lu";
@@ -317,7 +317,7 @@ const Page = () => {
         </div>
 
         {/* Footer */}
-        
+        <Footer />
       </ProtectRoute>
     </div>
   );

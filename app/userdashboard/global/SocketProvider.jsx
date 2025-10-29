@@ -9,7 +9,7 @@ import { useStore } from "@/app/global/DataProvider";
 import { commonLogout } from "../components/common";
 const SocketProvider = ({ children }) => {
   let mysocketUrl = "https://edu-socket.onrender.com";
-  // mysocketUrl = "http://localhost:3001";
+  mysocketUrl = "http://localhost:3001";
   const { store ,dispatch} = useStore();
   const [socket, setSocket] = useState(null);
   const [localStream, setLocalStram] = useState(null);

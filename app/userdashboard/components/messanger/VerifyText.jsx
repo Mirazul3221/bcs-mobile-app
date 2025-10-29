@@ -44,7 +44,7 @@ const SmartText = ({userType, message, handleImageZoom }) => {
     }
   }
 
-  
+  console.log(message);
   return (
     <div className="mb-1">
       <a  href={`${urls[0]}`} target="_blank">
