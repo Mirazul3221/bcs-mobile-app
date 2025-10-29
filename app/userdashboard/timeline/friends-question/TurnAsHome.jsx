@@ -6,7 +6,7 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import SuperHeader from "../../components/SuperHeader";
 import QuestionCard from "../components/QuestionCard";
 import { useStore } from "@/app/global/DataProvider";
-import Footer from "@/app/components/Footer";
+//
 import { IoMdSettings } from "react-icons/io";
 import { FiFileText } from "react-icons/fi";
 import { LuLogOut } from "react-icons/lu";
@@ -469,9 +469,6 @@ const TurnAsHome = () => {
             />
           </div>
         )}
-        {
-          !hasMore &&  <Footer />
-        }
       </ProtectRoute>
     </div>
   );

@@ -5,7 +5,7 @@ import React, { Suspense, useContext, useEffect, useState } from "react";
 import loderImage from "@/public/wating.gif";
 import notFound from "@/public/questions-not-found.jpg";
 import Image from "next/image";
-import Footer from "@/app/components/Footer";
+//
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProtectRoute from "@/app/global/ProtectRoute";
@@ -375,7 +375,7 @@ const Page = () => {
             )}
           </div>
         </div>
-        <Footer />
+        
       </div>
     </ProtectRoute>
   );

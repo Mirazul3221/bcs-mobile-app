@@ -7,7 +7,7 @@ import React, { useEffect, useState } from "react";
 import banner from "@/public/banner/profile-banner.jpg";
 import moment from "moment";
 import RadarChart from "@/app/userdashboard/components/RaderChart";
-import Footer from "@/app/components/Footer";
+//
 import Image from "next/image";
 import { FiUserPlus } from "react-icons/fi";
 
@@ -205,7 +205,7 @@ const Page = () => {
         </div>
       </div>
       <div className="hidden md:block">
-        <Footer />
+        
       </div>
     </div>
   );

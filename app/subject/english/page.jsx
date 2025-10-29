@@ -16,7 +16,7 @@ import { devider } from "../conponents/devider";
 import QuestionLoader from "../conponents/QuestionLoader";
 import lodingImage from "@/public/wating.gif";
 import Image from "next/image";
-import Footer from "@/app/components/Footer";
+//
 import SuperHeader from "@/app/userdashboard/components/SuperHeader";
 import { useRouter } from "next/navigation";
 import { commonLogout } from "@/app/userdashboard/components/common";
@@ -327,7 +327,7 @@ const Page = () => {
       </div>
       {/* <script type="text/javascript" src="//www.topcreativeformat.com/1e4c448d5eee38ea6fe4d00ccc81e2f1/invoke.js"></script> */}
       <div className="w-full">
-          <Footer />
+          
         </div>
     </ProtectRoute>
   );

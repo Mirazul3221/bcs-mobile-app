@@ -1,7 +1,7 @@
 import React from "react";
 import SuperHeader from "../../components/SuperHeader";
 import ProtectRoute from "@/app/global/ProtectRoute";
-import Footer from "@/app/components/Footer";
+//
 import AddQuestion from "./components/AddQuestion";
 
 const page = () => {
@@ -15,7 +15,7 @@ const page = () => {
           <div className="md:px-10 border-t py-4 px-4 pt-2 md:pt-4 min-h-[80vh] bg-gray-50">
             <AddQuestion/>
           </div>
-          <Footer />
+          
         </div>
       </ProtectRoute>
     </div>

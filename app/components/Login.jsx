@@ -57,15 +57,15 @@ const InputForm = () => {
       let uri = `${baseurl}/auth/user/login`;
       const { data } = await axios.post(uri, submitValue);
       setAlert(data.msg);
-      if(typeof window !== 'undefined'){
+      if (typeof window !== "undefined") {
         localStorage.setItem("token", data.token);
       }
 
       dispatch({ type: "login_success", paylod: { token: data.token } });
-       window.location.href = `${viewurl}`
-       setTimeout(() => {
+      window.location.href = `${viewurl}`;
+      setTimeout(() => {
         setLoader(false);
-       }, 60000);
+      }, 60000);
     } catch (error) {
       console.log(error);
       setAlert(error.response?.data.message);
@@ -77,12 +77,11 @@ const InputForm = () => {
       <div className="p-8 md:w-[400px] md:h-[74vh]">
         <form onSubmit={handlesubmit}>
           <div>
-           <div className="flex justify-center"> <Logo w={100}/></div>
             <h2 className={`text-rose-300`}>{alert}</h2>
             <div className="">
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-900 dark:text-white"
+                className="block mb-2 text-lg font-semibold ml-2 text-gray-900 dark:text-white"
               >
                 Email address
               </label>
@@ -92,7 +91,7 @@ const InputForm = () => {
                 type="email"
                 id="email"
                 name="email"
-                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:bg-white focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                  className="bg-gray-50 border border-gray-300 text-gray-900 p-4 mb-4 rounded-full focus:ring-blue-500 focus:border-blue-500 block w-full dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="john.doe@company.com"
                 required
               />
@@ -100,28 +99,20 @@ const InputForm = () => {
             <div className="mb-2">
               <label
                 htmlFor="email"
-                className="block mt-4 text-sm font-medium text-gray-900 dark:text-white"
+                className="block mb-2 text-lg font-semibold ml-2 text-gray-900 dark:text-white"
               >
                 Password
               </label>
 
-              <div className="bg-gray-50 relative border border-gray-300 text-gray-900 text-sm rounded-lg">
                 <input
-                  className="focus:ring-blue-500 rounded-lg pr-12 focus:outline-none focus:bg-white focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  className="bg-gray-50 border border-gray-300 text-gray-900 p-4 mb-4 rounded-full focus:ring-blue-500 focus:border-blue-500 block w-full dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   type={showPassword ? "text" : "password"}
                   placeholder="•••••••••"
                   id="password"
                   name="password"
                   value={submitValue.password}
                   onChange={targetElement}
-                />
-                <div
-                  onClick={toggleShowPassword}
-                  className="focus:outline-none cursor-pointer p-2 rounded-full mr-4 absolute top-[50%] transform -translate-y-[50%] right-0"
-                >
-                  {showPassword ? <FaRegEyeSlash /> : <IoEyeOutline />}
-                </div>
-              </div>
+                />{" "}
             </div>
             <button
               disabled={loader}
@@ -129,8 +120,8 @@ const InputForm = () => {
               className={`mt-2 ${
                 loader
                   ? ""
-                  : "bg-[#3e19fa] hover:bg-violet-600 text-white duration-500"
-              } border py-2 rounded-md w-full flex justify-center items-center`}
+                  : "bg-gradient-to-r from-[#f720b0] via-blue-600 to-cyan-500 text-white duration-500"
+              } border p-4 rounded-full w-full flex justify-center items-center`}
             >
               {loader ? (
                 <div className="flex justify-center items-center gap-2">
@@ -143,11 +134,14 @@ const InputForm = () => {
             </button>
           </div>
         </form>
-        <Link href='./recoverypassword'><h2 className="text-center mt-2 text-sm">Forgotten password?</h2></Link> 
+        <Link href="./recoverypassword">
+          <h2 className="text-center mt-2 text-sm">Forgotten password?</h2>
+        </Link>
         <div className="py-4 border-t-2 mt-2">
-          <Link href='./register'>
+          <Link href="./register">
             <button
-              className={`bg-[#3e19fa] hover:bg-violet-600 text-white duration-500 border py-2 rounded-md w-full flex justify-center items-center`}
+              className={`bg-gradient-to-r from-[#f720b0] via-blue-600 to-cyan-500 text-white duration-500"
+              } border p-4 rounded-full w-full flex justify-center items-center`}
             >
               <h2>Create account</h2>
             </button>

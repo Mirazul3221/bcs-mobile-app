@@ -9,7 +9,7 @@ import waiting from "@/public/wating.gif";
 import Image from "next/image";
 import { Banner } from "@/app/adsterra/Banner";
 import Header from "@/app/components/Header";
-import Footer from "@/app/components/Footer";
+//
 import EnglishSiteBar from "./components/EnglishSiteBar";
 import Link from "next/link";
 const Page = () => {
@@ -333,7 +333,7 @@ const Page = () => {
           </div>
         )}
         <div className="w-full overflow-hidden flex justify-center"></div>
-        <Footer />
+        
       </div>
     </>
   );

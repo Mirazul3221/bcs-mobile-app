@@ -8,7 +8,7 @@ import loderImage from "@/public/wating.gif";
 import notFound from "@/public/questions-not-found.jpg";
 import Image from "next/image";
 import HTMLReactParser from "html-react-parser";
-import Footer from "@/app/components/Footer";
+//
 import Link from "next/link";
 
 const Page = () => {
@@ -248,7 +248,7 @@ const Page = () => {
           )}
         </div>
       )}
-      <Footer />
+      
     </div>
   );
 };

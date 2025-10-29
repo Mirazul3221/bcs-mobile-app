@@ -73,7 +73,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html className="select-none" lang="en">
-      <body className="font-sans bg-[#F2F2FC]">
+      <body className="font-sans">
                 {/* ✅ MathJax config */}
         <Script id="mathjax-config" strategy="beforeInteractive">
           {`

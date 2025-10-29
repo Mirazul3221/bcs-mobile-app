@@ -14,7 +14,7 @@ const page = () => {
         <Logo w={100} />
         <h2 className="text-sm">
           <span className="hidden md:inline">Don't have an account?</span>
-          <Link href={"/login"}>
+          <Link href={"/register"}>
             <span className="px-2 py-1 rounded-md text-white ml-2 bg-gradient-to-r from-[#f720b0] via-blue-600 to-cyan-500">Sign up</span>
           </Link>
         </h2>
